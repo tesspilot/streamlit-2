@@ -4,6 +4,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 import numpy as np
 from pathlib import Path
+import os
 
 # Set page config
 st.set_page_config(
@@ -37,17 +38,28 @@ def format_euro(value):
 @st.cache_data
 def load_data():
     try:
-        file_path = Path("../data/excel/cleaned_filtered_data.csv")
-        if not file_path.exists():
+        # Get the directory of the current script
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        # Construct path to data file
+        file_path = os.path.join(script_dir, "..", "data", "excel", "cleaned_filtered_data.csv")
+        
+        if not os.path.exists(file_path):
             st.error(f"Data file not found at: {file_path}")
             return pd.DataFrame()
         
+        # Read the CSV file
         df = pd.read_csv(file_path)
-        # Clean column names
+        
+        # Clean column names and rename them
         df.columns = ['Asset', 'Total_Area', 'Unit_Price', 'Total_Value']
         
-        # Remove rows with missing values in important columns
+        # Clean the data
         df = df.dropna(subset=['Asset', 'Total_Value'])
+        
+        # Convert numeric columns
+        df['Total_Area'] = pd.to_numeric(df['Total_Area'], errors='coerce')
+        df['Unit_Price'] = pd.to_numeric(df['Unit_Price'], errors='coerce')
+        df['Total_Value'] = pd.to_numeric(df['Total_Value'], errors='coerce')
         
         return df
     except Exception as e:
@@ -124,6 +136,7 @@ def main():
     df_display = df_filtered.copy()
     df_display['Unit_Price'] = df_display['Unit_Price'].apply(format_euro)
     df_display['Total_Value'] = df_display['Total_Value'].apply(format_euro)
+    df_display['Total_Area'] = df_display['Total_Area'].apply(lambda x: f"{x:,.2f}" if pd.notnull(x) else "N/A")
     
     st.dataframe(
         df_display,
