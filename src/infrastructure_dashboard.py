@@ -38,17 +38,27 @@ def format_euro(value):
 @st.cache_data
 def load_data():
     try:
-        # Get the directory of the current script
-        script_dir = os.path.dirname(os.path.abspath(__file__))
-        # Construct path to data file
-        file_path = os.path.join(script_dir, "..", "data", "excel", "cleaned_filtered_data.csv")
+        # Define possible data file locations
+        possible_paths = [
+            "data/cleaned_filtered_data.csv",  # Root data directory
+            "data/excel/cleaned_filtered_data.csv",  # Streamlit Cloud path
+            "../data/excel/cleaned_filtered_data.csv",  # Local development path
+            os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "data", "excel", "cleaned_filtered_data.csv")  # Absolute path
+        ]
         
-        if not os.path.exists(file_path):
-            st.error(f"Data file not found at: {file_path}")
+        df = None
+        used_path = None
+        
+        # Try each possible path
+        for file_path in possible_paths:
+            if os.path.exists(file_path):
+                df = pd.read_csv(file_path)
+                used_path = file_path
+                break
+        
+        if df is None:
+            st.error(f"Data file not found. Tried paths: {', '.join(possible_paths)}")
             return pd.DataFrame()
-        
-        # Read the CSV file
-        df = pd.read_csv(file_path)
         
         # Clean column names and rename them
         df.columns = ['Asset', 'Total_Area', 'Unit_Price', 'Total_Value']
@@ -61,6 +71,7 @@ def load_data():
         df['Unit_Price'] = pd.to_numeric(df['Unit_Price'], errors='coerce')
         df['Total_Value'] = pd.to_numeric(df['Total_Value'], errors='coerce')
         
+        st.success(f"Successfully loaded data from: {used_path}")
         return df
     except Exception as e:
         st.error(f"Error loading data: {str(e)}")
